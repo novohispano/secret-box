@@ -2,6 +2,10 @@ const assert  = require('chai').assert
 const app     = require('../server')
 const request = require('request')
 
+const environment   = process.env.NODE_ENV || 'test'
+const configuration = require('../knexfile')[environment]
+const database      = require('knex')(configuration)
+
 describe('Server', () => {
   before(done => {
     this.port   = 9876
@@ -20,9 +24,7 @@ describe('Server', () => {
     this.server.close()
   })
 
-  it('should exist', () => {
-    assert(app)
-  })
+  it('should exist', () => assert(app) )
 
   describe('GET /', () => {
     it('should return a 200', (done) => {
@@ -49,14 +51,21 @@ describe('Server', () => {
   })
 
   describe('GET /api/secrets/:id', () => {
-    beforeEach(() => {
-      app.locals.secrets = {
-        wowowow: 'I am a banana'
-      }
+    beforeEach((done) => {
+      database.raw(
+        'INSERT INTO secrets (message, created_at) VALUES (?, ?)',
+        ['I open bananas from the wrong side', new Date(2017, 5, 6)]
+      )
+      .then(() => done() )
+    })
+
+    afterEach((done) => {
+      database.raw('TRUNCATE secrets RESTART IDENTITY')
+      .then(() => done() )
     })
 
     it('should return a 404 if the resource is not found', (done) => {
-      this.request.get('/api/secrets/bahaha', (error, response) => {
+      this.request.get('/api/secrets/1000', (error, response) => {
         if (error) { done(error) }
 
         assert.equal(response.statusCode, 404)
@@ -65,15 +74,19 @@ describe('Server', () => {
       })
     })
 
-    it('should have the id and the message from the resource', (done) => {
-      const id      = 'wowowow'
-      const message = app.locals.secrets['wowowow']
 
-      this.request.get('/api/secrets/wowowow', (error, response) => {
+    it('should have the id and the message from the resource', (done) => {
+      this.request.get('/api/secrets/1', (error, response) => {
         if (error) { done(error) }
 
-        assert(response.body.includes(id), `"${response.body}" does not include "${id}."`)
-        assert(response.body.includes(message), `"${response.body}" does not include "${message}."`)
+        const id         = 1
+        const message    = "I open bananas from the wrong side"
+
+        let parsedSecret = JSON.parse(response.body)
+
+        assert.equal(parsedSecret.id, id)
+        assert.equal(parsedSecret.message, message)
+        assert.ok(parsedSecret.created_at)
 
         done()
       })

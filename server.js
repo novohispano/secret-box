@@ -3,26 +3,30 @@ const app        = express()
 const bodyParser = require('body-parser')
 const md5        = require('md5')
 
+const environment   = process.env.NODE_ENV || 'development'
+const configuration = require('./knexfile')[environment]
+const database      = require('knex')(configuration)
+
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
 app.set('port', process.env.PORT || 3000)
-app.locals.title   = 'Secret Box'
-app.locals.secrets = {
-  wowowow: 'I am a banana'
-}
+app.locals.title = 'Secret Box'
 
 app.get('/', (request, response) => {
   response.send(app.locals.title)
 })
 
 app.get('/api/secrets/:id', (request, response) => {
-  const id      = request.params.id
-  const message = app.locals.secrets[id]
+  database.raw('SELECT * FROM secrets WHERE id = ? LIMIT 1', [request.params.id]).then((data) => {
+    const record = data.rows[0]
 
-  if (!message) { return response.sendStatus(404) }
-
-  response.json({ id, message })
+    if (record == null) {
+      response.sendStatus(404)
+    } else {
+      response.json(record)
+    }
+  })
 })
 
 app.post('/api/secrets', (request, response) => {
