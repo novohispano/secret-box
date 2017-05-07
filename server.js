@@ -14,13 +14,9 @@ app.get('/', (request, response) => {
   response.send(app.locals.title)
 })
 
-app.get('/api/secrets/:id', (request, response) => {
-  SecretsController.show(request, response)
-})
+app.get('/api/secrets/:id', SecretsController.show)
 
-app.post('/api/secrets', (request, response) => {
-  SecretsController.create(request, response)
-})
+app.post('/api/secrets', SecretsController.create)
 
 if (!module.parent) {
   app.listen(app.get('port'), () => {
