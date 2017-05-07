@@ -3,9 +3,7 @@ const app        = express()
 const bodyParser = require('body-parser')
 const md5        = require('md5')
 
-const environment   = process.env.NODE_ENV || 'development'
-const configuration = require('./knexfile')[environment]
-const database      = require('knex')(configuration)
+const Secret = require('./lib/models/secret')
 
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
@@ -18,13 +16,11 @@ app.get('/', (request, response) => {
 })
 
 app.get('/api/secrets/:id', (request, response) => {
-  database.raw('SELECT * FROM secrets WHERE id = ? LIMIT 1', [request.params.id]).then((data) => {
-    const record = data.rows[0]
-
-    if (record == null) {
+  Secret.find(request.params.id).then((data) => {
+    if (data == null) {
       response.sendStatus(404)
     } else {
-      response.json(record)
+      response.json(data)
     }
   })
 })
@@ -37,9 +33,9 @@ app.post('/api/secrets', (request, response) => {
       error: 'No message property provided'
     })
   } else {
-    const id = md5(message)
-    app.locals.secrets[id] = message
-    response.status(201).json({ id, message })
+    Secret.create(message).then((data) => {
+      response.status(201).json(data)
+    })
   }
 })
 

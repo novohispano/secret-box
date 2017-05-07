@@ -2,9 +2,7 @@ const assert  = require('chai').assert
 const app     = require('../server')
 const request = require('request')
 
-const environment   = process.env.NODE_ENV || 'test'
-const configuration = require('../knexfile')[environment]
-const database      = require('knex')(configuration)
+const Secret  = require('../lib/models/secret')
 
 describe('Server', () => {
   before(done => {
@@ -52,16 +50,13 @@ describe('Server', () => {
 
   describe('GET /api/secrets/:id', () => {
     beforeEach((done) => {
-      database.raw(
-        'INSERT INTO secrets (message, created_at) VALUES (?, ?)',
-        ['I open bananas from the wrong side', new Date(2017, 5, 6)]
-      )
-      .then(() => done() )
+      Secret.create('I open bananas from the wrong side')
+      .then(() => done())
     })
 
     afterEach((done) => {
-      database.raw('TRUNCATE secrets RESTART IDENTITY')
-      .then(() => done() )
+      Secret.destroyAll()
+      .then(() => done())
     })
 
     it('should return a 404 if the resource is not found', (done) => {
@@ -94,10 +89,6 @@ describe('Server', () => {
   })
 
   describe('POST /api/secrets', () => {
-    beforeEach(() => {
-      app.locals.secrets = {}
-    })
-
     it('should not return a 404', (done) => {
       this.request.post('/api/secrets', (error, response) => {
         if (error) { done(error) }
@@ -116,9 +107,14 @@ describe('Server', () => {
       this.request.post('/api/secrets', { form: message }, (error, response) => {
         if (error) { done(error) }
 
-        const secretCount = Object.keys(app.locals.secrets).length
+        const id      = 1
+        const message = "I like pineapples!"
 
-        assert.equal(secretCount, 1, `Expected 1 secret, found ${secretCount}`)
+        let parsedSecret = JSON.parse(response.body)
+
+        assert.equal(parsedSecret.id, id)
+        assert.equal(parsedSecret.message, message)
+        assert.ok(parsedSecret.created_at)
 
         done()
       })
