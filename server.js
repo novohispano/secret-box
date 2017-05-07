@@ -1,9 +1,8 @@
 const express    = require('express')
 const app        = express()
 const bodyParser = require('body-parser')
-const md5        = require('md5')
 
-const Secret = require('./lib/models/secret')
+const SecretsController = require('./lib/controllers/secrets-controller')
 
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
@@ -16,27 +15,11 @@ app.get('/', (request, response) => {
 })
 
 app.get('/api/secrets/:id', (request, response) => {
-  Secret.find(request.params.id).then((data) => {
-    if (data == null) {
-      response.sendStatus(404)
-    } else {
-      response.json(data)
-    }
-  })
+  SecretsController.show(request, response)
 })
 
 app.post('/api/secrets', (request, response) => {
-  const message = request.body.message
-
-  if (!message) {
-    return response.status(422).send({
-      error: 'No message property provided'
-    })
-  } else {
-    Secret.create(message).then((data) => {
-      response.status(201).json(data)
-    })
-  }
+  SecretsController.create(request, response)
 })
 
 if (!module.parent) {
